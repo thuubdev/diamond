@@ -2,10 +2,10 @@ local UILibrary = {}
 UILibrary.__index = UILibrary
 
 local Colors = {
-    Background = Color3.fromRGB(18, 18, 18),
-    Secondary = Color3.fromRGB(25, 25, 25),
-    Tertiary = Color3.fromRGB(32, 32, 32),
-    Border = Color3.fromRGB(45, 45, 45),
+    Background = Color3.fromRGB(10, 10, 10),
+    Secondary = Color3.fromRGB(15, 15, 15),
+    Tertiary = Color3.fromRGB(20, 20, 20),
+    Border = Color3.fromRGB(30, 30, 30),
     White = Color3.fromRGB(255, 255, 255),
     Gray = Color3.fromRGB(160, 160, 160),
     Red = Color3.fromRGB(239, 68, 68),
@@ -24,6 +24,7 @@ function UILibrary.new(config)
     self.Icon = config.Icon or ""
     self.MinimizedBar = nil
     self.IsMinimized = false
+    self.IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
     
     self.ScreenGui = Instance.new("ScreenGui")
     self.ScreenGui.Name = "UILibrary"
@@ -172,8 +173,12 @@ function UILibrary:CreateWindow()
         TweenService:Create(CloseButton, TweenInfo.new(0.2), {ImageColor3 = Colors.Gray}):Play()
     end)
     
-    self:MakeDraggable(Window, TopBar)
-    self:MakeResizable(Window)
+    if not self.IsMobile then
+        self:MakeDraggable(Window, TopBar)
+        self:MakeResizable(Window)
+    else
+        self:MakeDraggable(Window, TopBar)
+    end
     
     MinimizeButton.MouseButton1Click:Connect(function()
         self:Minimize()
@@ -188,8 +193,8 @@ function UILibrary:CreateNotification()
     local Notification = Instance.new("Frame")
     Notification.Name = "Notification"
     Notification.Size = UDim2.new(0, 0, 0, 0)
-    Notification.Position = UDim2.new(1, -20, 0.5, -75)
-    Notification.AnchorPoint = Vector2.new(1, 0.5)
+    Notification.Position = UDim2.new(0.5, 0, 1, -20)
+    Notification.AnchorPoint = Vector2.new(0.5, 1)
     Notification.BackgroundColor3 = Colors.Secondary
     Notification.BorderSizePixel = 0
     Notification.Visible = false
@@ -376,31 +381,52 @@ end
 function UILibrary:ShowCloseConfirmation()
     self.Notification.Visible = true
     self.Notification.Size = UDim2.new(0, 0, 0, 0)
+    self.Notification.BackgroundTransparency = 1
     
-    local tween = TweenService:Create(
+    local sizeTween = TweenService:Create(
         self.Notification,
-        TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+        TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
         {Size = UDim2.new(0, 320, 0, 140)}
     )
-    tween:Play()
+    
+    local fadeTween = TweenService:Create(
+        self.Notification,
+        TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {BackgroundTransparency = 0}
+    )
+    
+    fadeTween:Play()
+    task.wait(0.1)
+    sizeTween:Play()
 end
 
 function UILibrary:HideNotification()
-    local tween = TweenService:Create(
+    local sizeTween = TweenService:Create(
         self.Notification,
-        TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In),
+        TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In),
         {Size = UDim2.new(0, 0, 0, 0)}
     )
-    tween:Play()
-    tween.Completed:Connect(function()
+    
+    local fadeTween = TweenService:Create(
+        self.Notification,
+        TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+        {BackgroundTransparency = 1}
+    )
+    
+    sizeTween:Play()
+    task.wait(0.2)
+    fadeTween:Play()
+    
+    sizeTween.Completed:Connect(function()
         self.Notification.Visible = false
+        self.Notification.BackgroundTransparency = 0
     end)
 end
 
 function UILibrary:Close()
     local tween = TweenService:Create(
         self.Window,
-        TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In),
+        TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In),
         {Size = UDim2.new(0, 0, 0, 0)}
     )
     tween:Play()
@@ -410,136 +436,175 @@ function UILibrary:Close()
 end
 
 function UILibrary:Minimize()
-    self.Window.Visible = false
-    self.IsMinimized = true
+    local tween = TweenService:Create(
+        self.Window,
+        TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+        {Size = UDim2.new(0, 0, 0, 0)}
+    )
+    tween:Play()
     
-    if not self.MinimizedBar then
-        local MinBar = Instance.new("Frame")
-        MinBar.Name = "MinimizedBar"
-        MinBar.Size = UDim2.new(0, 350, 0, 45)
-        MinBar.Position = UDim2.new(0.5, -175, 0.5, -22.5)
-        MinBar.BackgroundColor3 = Colors.Secondary
-        MinBar.BorderSizePixel = 0
-        MinBar.Parent = self.ScreenGui
-        self.MinimizedBar = MinBar
+    tween.Completed:Connect(function()
+        self.Window.Visible = false
+        self.IsMinimized = true
         
-        local MinBarCorner = Instance.new("UICorner")
-        MinBarCorner.CornerRadius = UDim.new(0, 10)
-        MinBarCorner.Parent = MinBar
-        
-        local MinBarStroke = Instance.new("UIStroke")
-        MinBarStroke.Color = Colors.Border
-        MinBarStroke.Thickness = 1
-        MinBarStroke.Transparency = 0.5
-        MinBarStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-        MinBarStroke.Parent = MinBar
-        
-        local MinIconContainer = Instance.new("Frame")
-        MinIconContainer.Name = "IconContainer"
-        MinIconContainer.Size = UDim2.new(0, 30, 0, 30)
-        MinIconContainer.Position = UDim2.new(0, 10, 0.5, -15)
-        MinIconContainer.BackgroundColor3 = Colors.Tertiary
-        MinIconContainer.BorderSizePixel = 0
-        MinIconContainer.Parent = MinBar
-        
-        local MinIconCorner = Instance.new("UICorner")
-        MinIconCorner.CornerRadius = UDim.new(0, 8)
-        MinIconCorner.Parent = MinIconContainer
-        
-        local MinBarIcon = Instance.new("ImageLabel")
-        MinBarIcon.Name = "Icon"
-        MinBarIcon.Size = UDim2.new(0.7, 0, 0.7, 0)
-        MinBarIcon.Position = UDim2.new(0.15, 0, 0.15, 0)
-        MinBarIcon.BackgroundTransparency = 1
-        MinBarIcon.Image = self.Icon
-        MinBarIcon.ImageColor3 = Colors.White
-        MinBarIcon.Parent = MinIconContainer
-        
-        local MinBarTitle = Instance.new("TextLabel")
-        MinBarTitle.Name = "Title"
-        MinBarTitle.Size = UDim2.new(1, -130, 1, 0)
-        MinBarTitle.Position = UDim2.new(0, 50, 0, 0)
-        MinBarTitle.BackgroundTransparency = 1
-        MinBarTitle.Text = self.Name
-        MinBarTitle.TextColor3 = Colors.White
-        MinBarTitle.TextSize = 13
-        MinBarTitle.Font = Enum.Font.GothamMedium
-        MinBarTitle.TextXAlignment = Enum.TextXAlignment.Left
-        MinBarTitle.Parent = MinBar
-        
-        local MinButtonContainer = Instance.new("Frame")
-        MinButtonContainer.Name = "ButtonContainer"
-        MinButtonContainer.Size = UDim2.new(0, 65, 0, 28)
-        MinButtonContainer.Position = UDim2.new(1, -75, 0.5, -14)
-        MinButtonContainer.BackgroundTransparency = 1
-        MinButtonContainer.Parent = MinBar
-        
-        local OpenButton = Instance.new("ImageButton")
-        OpenButton.Name = "OpenButton"
-        OpenButton.Size = UDim2.new(0, 28, 0, 28)
-        OpenButton.Position = UDim2.new(0, 0, 0, 0)
-        OpenButton.BackgroundColor3 = Colors.Tertiary
-        OpenButton.BorderSizePixel = 0
-        OpenButton.Image = "rbxassetid://116845122064768"
-        OpenButton.ImageColor3 = Colors.Gray
-        OpenButton.Parent = MinButtonContainer
-        
-        local OpenCorner = Instance.new("UICorner")
-        OpenCorner.CornerRadius = UDim.new(0, 6)
-        OpenCorner.Parent = OpenButton
-        
-        local CloseMinButton = Instance.new("ImageButton")
-        CloseMinButton.Name = "CloseButton"
-        CloseMinButton.Size = UDim2.new(0, 28, 0, 28)
-        CloseMinButton.Position = UDim2.new(0, 37, 0, 0)
-        CloseMinButton.BackgroundColor3 = Colors.Tertiary
-        CloseMinButton.BorderSizePixel = 0
-        CloseMinButton.Image = "rbxassetid://132854725146991"
-        CloseMinButton.ImageColor3 = Colors.Gray
-        CloseMinButton.Parent = MinButtonContainer
-        
-        local CloseMinCorner = Instance.new("UICorner")
-        CloseMinCorner.CornerRadius = UDim.new(0, 6)
-        CloseMinCorner.Parent = CloseMinButton
-        
-        OpenButton.MouseEnter:Connect(function()
-            TweenService:Create(OpenButton, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Border}):Play()
-            TweenService:Create(OpenButton, TweenInfo.new(0.2), {ImageColor3 = Colors.White}):Play()
-        end)
-        
-        OpenButton.MouseLeave:Connect(function()
-            TweenService:Create(OpenButton, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Tertiary}):Play()
-            TweenService:Create(OpenButton, TweenInfo.new(0.2), {ImageColor3 = Colors.Gray}):Play()
-        end)
-        
-        CloseMinButton.MouseEnter:Connect(function()
-            TweenService:Create(CloseMinButton, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Red}):Play()
-            TweenService:Create(CloseMinButton, TweenInfo.new(0.2), {ImageColor3 = Colors.White}):Play()
-        end)
-        
-        CloseMinButton.MouseLeave:Connect(function()
-            TweenService:Create(CloseMinButton, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Tertiary}):Play()
-            TweenService:Create(CloseMinButton, TweenInfo.new(0.2), {ImageColor3 = Colors.Gray}):Play()
-        end)
-        
-        self:MakeDraggable(MinBar, MinBar)
-        
-        OpenButton.MouseButton1Click:Connect(function()
-            self:Restore()
-        end)
-        
-        CloseMinButton.MouseButton1Click:Connect(function()
-            self:ShowCloseConfirmation()
-        end)
-    else
-        self.MinimizedBar.Visible = true
-    end
+        if not self.MinimizedBar then
+            local MinBar = Instance.new("Frame")
+            MinBar.Name = "MinimizedBar"
+            MinBar.Size = UDim2.new(0, 0, 0, 0)
+            MinBar.Position = UDim2.new(0.5, -175, 0.5, -22.5)
+            MinBar.BackgroundColor3 = Colors.Secondary
+            MinBar.BorderSizePixel = 0
+            MinBar.Parent = self.ScreenGui
+            self.MinimizedBar = MinBar
+            
+            local MinBarCorner = Instance.new("UICorner")
+            MinBarCorner.CornerRadius = UDim.new(0, 10)
+            MinBarCorner.Parent = MinBar
+            
+            local MinBarStroke = Instance.new("UIStroke")
+            MinBarStroke.Color = Colors.Border
+            MinBarStroke.Thickness = 1
+            MinBarStroke.Transparency = 0.5
+            MinBarStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            MinBarStroke.Parent = MinBar
+            
+            local MinIconContainer = Instance.new("Frame")
+            MinIconContainer.Name = "IconContainer"
+            MinIconContainer.Size = UDim2.new(0, 30, 0, 30)
+            MinIconContainer.Position = UDim2.new(0, 10, 0.5, -15)
+            MinIconContainer.BackgroundColor3 = Colors.Tertiary
+            MinIconContainer.BorderSizePixel = 0
+            MinIconContainer.Parent = MinBar
+            
+            local MinIconCorner = Instance.new("UICorner")
+            MinIconCorner.CornerRadius = UDim.new(0, 8)
+            MinIconCorner.Parent = MinIconContainer
+            
+            local MinBarIcon = Instance.new("ImageLabel")
+            MinBarIcon.Name = "Icon"
+            MinBarIcon.Size = UDim2.new(0.7, 0, 0.7, 0)
+            MinBarIcon.Position = UDim2.new(0.15, 0, 0.15, 0)
+            MinBarIcon.BackgroundTransparency = 1
+            MinBarIcon.Image = self.Icon
+            MinBarIcon.ImageColor3 = Colors.White
+            MinBarIcon.Parent = MinIconContainer
+            
+            local MinBarTitle = Instance.new("TextLabel")
+            MinBarTitle.Name = "Title"
+            MinBarTitle.Size = UDim2.new(1, -130, 1, 0)
+            MinBarTitle.Position = UDim2.new(0, 50, 0, 0)
+            MinBarTitle.BackgroundTransparency = 1
+            MinBarTitle.Text = self.Name
+            MinBarTitle.TextColor3 = Colors.White
+            MinBarTitle.TextSize = 13
+            MinBarTitle.Font = Enum.Font.GothamMedium
+            MinBarTitle.TextXAlignment = Enum.TextXAlignment.Left
+            MinBarTitle.Parent = MinBar
+            
+            local MinButtonContainer = Instance.new("Frame")
+            MinButtonContainer.Name = "ButtonContainer"
+            MinButtonContainer.Size = UDim2.new(0, 65, 0, 28)
+            MinButtonContainer.Position = UDim2.new(1, -75, 0.5, -14)
+            MinButtonContainer.BackgroundTransparency = 1
+            MinButtonContainer.Parent = MinBar
+            
+            local OpenButton = Instance.new("ImageButton")
+            OpenButton.Name = "OpenButton"
+            OpenButton.Size = UDim2.new(0, 28, 0, 28)
+            OpenButton.Position = UDim2.new(0, 0, 0, 0)
+            OpenButton.BackgroundColor3 = Colors.Tertiary
+            OpenButton.BorderSizePixel = 0
+            OpenButton.Image = "rbxassetid://116845122064768"
+            OpenButton.ImageColor3 = Colors.Gray
+            OpenButton.Parent = MinButtonContainer
+            
+            local OpenCorner = Instance.new("UICorner")
+            OpenCorner.CornerRadius = UDim.new(0, 6)
+            OpenCorner.Parent = OpenButton
+            
+            local CloseMinButton = Instance.new("ImageButton")
+            CloseMinButton.Name = "CloseButton"
+            CloseMinButton.Size = UDim2.new(0, 28, 0, 28)
+            CloseMinButton.Position = UDim2.new(0, 37, 0, 0)
+            CloseMinButton.BackgroundColor3 = Colors.Tertiary
+            CloseMinButton.BorderSizePixel = 0
+            CloseMinButton.Image = "rbxassetid://132854725146991"
+            CloseMinButton.ImageColor3 = Colors.Gray
+            CloseMinButton.Parent = MinButtonContainer
+            
+            local CloseMinCorner = Instance.new("UICorner")
+            CloseMinCorner.CornerRadius = UDim.new(0, 6)
+            CloseMinCorner.Parent = CloseMinButton
+            
+            OpenButton.MouseEnter:Connect(function()
+                TweenService:Create(OpenButton, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Border}):Play()
+                TweenService:Create(OpenButton, TweenInfo.new(0.2), {ImageColor3 = Colors.White}):Play()
+            end)
+            
+            OpenButton.MouseLeave:Connect(function()
+                TweenService:Create(OpenButton, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Tertiary}):Play()
+                TweenService:Create(OpenButton, TweenInfo.new(0.2), {ImageColor3 = Colors.Gray}):Play()
+            end)
+            
+            CloseMinButton.MouseEnter:Connect(function()
+                TweenService:Create(CloseMinButton, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Red}):Play()
+                TweenService:Create(CloseMinButton, TweenInfo.new(0.2), {ImageColor3 = Colors.White}):Play()
+            end)
+            
+            CloseMinButton.MouseLeave:Connect(function()
+                TweenService:Create(CloseMinButton, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Tertiary}):Play()
+                TweenService:Create(CloseMinButton, TweenInfo.new(0.2), {ImageColor3 = Colors.Gray}):Play()
+            end)
+            
+            self:MakeDraggable(MinBar, MinBar)
+            
+            OpenButton.MouseButton1Click:Connect(function()
+                self:Restore()
+            end)
+            
+            CloseMinButton.MouseButton1Click:Connect(function()
+                self:ShowCloseConfirmation()
+            end)
+            
+            local expandTween = TweenService:Create(
+                MinBar,
+                TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                {Size = UDim2.new(0, 350, 0, 45)}
+            )
+            expandTween:Play()
+        else
+            self.MinimizedBar.Visible = true
+            local expandTween = TweenService:Create(
+                self.MinimizedBar,
+                TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                {Size = UDim2.new(0, 350, 0, 45)}
+            )
+            expandTween:Play()
+        end
+    end)
 end
 
 function UILibrary:Restore()
-    self.Window.Visible = true
-    self.MinimizedBar.Visible = false
-    self.IsMinimized = false
+    local shrinkTween = TweenService:Create(
+        self.MinimizedBar,
+        TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+        {Size = UDim2.new(0, 0, 0, 0)}
+    )
+    shrinkTween:Play()
+    
+    shrinkTween.Completed:Connect(function()
+        self.MinimizedBar.Visible = false
+        self.Window.Visible = true
+        self.IsMinimized = false
+        
+        self.Window.Size = UDim2.new(0, 0, 0, 0)
+        local expandTween = TweenService:Create(
+            self.Window,
+            TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            {Size = UDim2.new(0, 650, 0, 450)}
+        )
+        expandTween:Play()
+    end)
 end
 
 function UILibrary:MakeDraggable(frame, dragHandle)
@@ -547,7 +612,7 @@ function UILibrary:MakeDraggable(frame, dragHandle)
     local dragInput, mousePos, framePos
     
     dragHandle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             mousePos = input.Position
             framePos = frame.Position
@@ -561,7 +626,7 @@ function UILibrary:MakeDraggable(frame, dragHandle)
     end)
     
     dragHandle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
     end)
